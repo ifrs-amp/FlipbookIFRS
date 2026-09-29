@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Flipbook Maker</title>
+<style>
+:root{--bg:#f3f4f6;--panel:#fff;--text:#1f2937;--muted:#6b7280;--accent:#2563eb;--line:#e5e7eb;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#111827;--panel:#1f2937;--text:#f3f4f6;--muted:#9ca3af;--accent:#60a5fa;--line:#374151}}
+:root[data-theme="dark"]{--bg:#111827;--panel:#1f2937;--text:#f3f4f6;--muted:#9ca3af;--accent:#60a5fa;--line:#374151}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;min-height:100vh}
+header{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 14px;background:var(--panel);border-bottom:1px solid var(--line)}
+h1{font-size:18px;margin:0 auto 0 0}
+button,.btn{background:var(--accent);color:#fff;border:0;border-radius:8px;padding:8px 12px;font-size:14px;cursor:pointer}
+button.sec{background:transparent;color:var(--text);border:1px solid var(--line)}
+button:disabled{opacity:.4}
+input[type=file]{display:none}
+input[type=text],input[type=number]{background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:14px}
+main{padding:14px}
+#stage{position:relative;display:flex;justify-content:center;align-items:center;min-height:60vh;overflow:auto;background:var(--bg)}
+#zoomwrap{transform-origin:center top;transition:transform .2s}
+#book{margin:0 auto}
+.bar{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;align-items:center;margin-top:12px}
+#info{color:var(--muted);font-size:14px;min-width:90px;text-align:center}
+#thumbs{display:flex;gap:6px;overflow-x:auto;padding:10px 0;margin-top:8px}
+#thumbs img{height:70px;border:2px solid transparent;border-radius:4px;cursor:pointer;flex:none}
+#thumbs img.on{border-color:var(--accent)}
+#msg{text-align:center;color:var(--muted);font-size:14px;margin:6px 0}
+.page-img{width:100%;height:100%;object-fit:fill;background:#fff}
+</style>
+</head>
+<body>
+<header>
+  <h1>📖 Flipbook Maker</h1>
+  <input type="text" id="title" value="Flipbook Saya" aria-label="Judul">
+  <label class="btn" for="file">Upload PDF / Gambar</label>
+  <input type="file" id="file" accept="application/pdf,image/*" multiple>
+  <button class="sec" id="btnExport">⬇ Unduh HTML</button>
+</header>
+<main>
+  <div id="msg">Contoh demo ditampilkan. Upload PDF atau gambar untuk membuat flipbook sendiri.</div>
+  <div id="stage"><div id="zoomwrap"><div id="book"></div></div></div>
+  <div class="bar">
+    <button class="sec" id="first">⏮</button>
+    <button class="sec" id="prev">◀</button>
+    <span id="info">-</span>
+    <button class="sec" id="next">▶</button>
+    <button class="sec" id="last">⏭</button>
+    <input type="number" id="goto" min="1" placeholder="Hal" style="width:70px">
+    <button class="sec" id="zin">＋</button>
+    <button class="sec" id="zout">－</button>
+    <button class="sec" id="fs">⛶ Layar penuh</button>
+  </div>
+  <div id="thumbs"></div>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/page-flip@2.0.7/dist/js/page-flip.browser.js"></script>
+<script>
+var pf=null, pages=[], zoom=1, ratio=1.414;
+var $=function(id){return document.getElementById(id)};
+if(window.pdfjsLib){pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';}
+
+function build(imgs){
+  pages=imgs;
+  if(pf){try{pf.destroy();}catch(e){}}
+  var old=$('book'), fresh=document.createElement('div'); fresh.id='book';
+  old.parentNode.replaceChild(fresh,old);
+  var im=new Image();
+  im.onload=function(){
+    ratio=im.naturalHeight/im.naturalWidth;
+    var w=450,h=Math.round(w*ratio);
+    pf=new St.PageFlip(fresh,{width:w,height:h,size:'stretch',minWidth:220,maxWidth:800,minHeight:220*ratio,maxHeight:800*ratio,showCover:true,maxShadowOpacity:.5,mobileScrollSupport:false});
+    pf.loadFromImages(imgs);
+    pf.on('flip',function(e){update(e.data)});
+    update(0);
+    thumbs();
+  };
+  im.src=imgs[0];
+}
+function update(i){
+  if(!pf)return;
+  $('info').textContent='Hal '+(i+1)+' / '+pf.getPageCount();
+  var t=document.querySelectorAll('#thumbs img');
+  t.forEach(function(x,k){x.classList.toggle('on',k===i)});
+}
+function thumbs(){
+  var box=$('thumbs'); box.innerHTML='';
+  pages.forEach(function(s,i){
+    var t=new Image(); t.src=s; t.alt='Halaman '+(i+1);
+    t.onclick=function(){pf.turnToPage(i);update(i)};
+    box.appendChild(t);
+  });
+}
+function demo(){
+  var out=[],cols=['#fde68a','#bfdbfe','#bbf7d0','#fecaca','#ddd6fe','#fbcfe8'];
+  for(var i=0;i<8;i++){
+    var c=document.createElement('canvas');c.width=600;c.height=848;
+    var x=c.getContext('2d');
+    x.fillStyle=i===0?'#1e3a8a':cols[i%6];x.fillRect(0,0,600,848);
+    x.fillStyle=i===0?'#fff':'#1f2937';x.font='bold 44px sans-serif';x.textAlign='center';
+    x.fillText(i===0?'Flipbook Demo':'Halaman '+i,300,420);
+    out.push(c.toDataURL('image/jpeg',.8));
+  }
+  return out;
+}
+function readImg(f){return new Promise(function(res){var r=new FileReader();r.onload=function(){res(r.result)};r.readAsDataURL(f)})}
+async function fromPdf(f){
+  var buf=await f.arrayBuffer();
+  var pdf=await pdfjsLib.getDocument({data:buf}).promise;
+  var out=[];
+  for(var n=1;n<=pdf.numPages;n++){
+    $('msg').textContent='Memproses halaman '+n+' / '+pdf.numPages+'...';
+    var p=await pdf.getPage(n), vp=p.getViewport({scale:1.5});
+    var c=document.createElement('canvas');c.width=vp.width;c.height=vp.height;
+    await p.render({canvasContext:c.getContext('2d'),viewport:vp}).promise;
+    out.push(c.toDataURL('image/jpeg',.8));
+  }
+  return out;
+}
+$('file').onchange=async function(e){
+  var files=Array.prototype.slice.call(e.target.files); if(!files.length)return;
+  var imgs=[];
+  try{
+    for(var f of files){
+      if(f.type==='application/pdf'){imgs=imgs.concat(await fromPdf(f));}
+      else if(f.type.indexOf('image/')===0){imgs.push(await readImg(f));}
+    }
+    if(!imgs.length){$('msg').textContent='File tidak didukung.';return;}
+    $('title').value=files[0].name.replace(/\.[^.]+$/,'');
+    build(imgs);
+    $('msg').textContent=imgs.length+' halaman siap.';
+  }catch(err){$('msg').textContent='Gagal memproses file: '+err.message;}
+  e.target.value='';
+};
+$('next').onclick=function(){pf&&pf.flipNext()};
+$('prev').onclick=function(){pf&&pf.flipPrev()};
+$('first').onclick=function(){pf&&(pf.turnToPage(0),update(0))};
+$('last').onclick=function(){if(pf){var l=pf.getPageCount()-1;pf.turnToPage(l);update(l)}};
+$('goto').onchange=function(){if(pf){var n=Math.max(1,Math.min(pf.getPageCount(),+this.value||1))-1;pf.turnToPage(n);update(n)}};
+function setZoom(z){zoom=Math.max(.5,Math.min(2.5,z));$('zoomwrap').style.transform='scale('+zoom+')'}
+$('zin').onclick=function(){setZoom(zoom+.2)};
+$('zout').onclick=function(){setZoom(zoom-.2)};
+$('fs').onclick=function(){var s=$('stage');if(document.fullscreenElement)document.exitFullscreen();else if(s.requestFullscreen)s.requestFullscreen();};
+document.addEventListener('keydown',function(e){if(e.target.tagName==='INPUT')return;if(e.key==='ArrowRight')$('next').click();if(e.key==='ArrowLeft')$('prev').click();});
+
+$('btnExport').onclick=function(){
+  var t=$('title').value||'Flipbook';
+  var esc=t.replace(/</g,'&lt;');
+  var h='<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+esc+'</title>'
+   +'<style>body{margin:0;background:#1f2937;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;font-family:sans-serif;color:#fff}#book{margin:auto}.b{margin:10px}button{padding:8px 14px;border:0;border-radius:8px;cursor:pointer}</style></head><body>'
+   +'<div id="book"></div><div class="b"><button id="p">◀</button> <span id="i"></span> <button id="n">▶</button></div>'
+   +'<script src="https://cdn.jsdelivr.net/npm/page-flip@2.0.7/dist/js/page-flip.browser.js"><\/script>'
+   +'<script>var imgs='+JSON.stringify(pages)+';var r='+ratio+';var w=450;'
+   +'var pf=new St.PageFlip(document.getElementById("book"),{width:w,height:Math.round(w*r),size:"stretch",minWidth:220,maxWidth:800,minHeight:220*r,maxHeight:800*r,showCover:true,mobileScrollSupport:false});'
+   +'pf.loadFromImages(imgs);function u(i){document.getElementById("i").textContent=(i+1)+" / "+pf.getPageCount()}u(0);pf.on("flip",function(e){u(e.data)});'
+   +'document.getElementById("p").onclick=function(){pf.flipPrev()};document.getElementById("n").onclick=function(){pf.flipNext()};<\/script></body></html>';
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([h],{type:'text/html'}));
+  a.download=t.replace(/[^\w\-]+/g,'_')+'.html';
+  document.body.appendChild(a);a.click();a.remove();
+};
+
+build(demo());
+</script>
+</body>
+</html>
