@@ -41,7 +41,7 @@ main{padding:14px}
 </header>
 <main>
   <div id="msg">Contoh demo ditampilkan. Upload PDF atau gambar untuk membuat flipbook sendiri.</div>
-  <div id="stage"><div id="zoomwrap"><div id="book"></div></div></div>
+  <div id="stage"><div id="zoomwrap"><div id="bookbox"></div></div></div>
   <div class="bar">
     <button class="sec" id="first">⏮</button>
     <button class="sec" id="prev">◀</button>
@@ -66,8 +66,9 @@ if(window.pdfjsLib){pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudf
 function build(imgs){
   pages=imgs;
   if(pf){try{pf.destroy();}catch(e){}}
-  var old=$('book'), fresh=document.createElement('div'); fresh.id='book';
-  old.parentNode.replaceChild(fresh,old);
+  var box=$('bookbox'); box.innerHTML='';
+  var fresh=document.createElement('div'); fresh.id='book';
+  box.appendChild(fresh);
   var im=new Image();
   im.onload=function(){
     ratio=im.naturalHeight/im.naturalWidth;
